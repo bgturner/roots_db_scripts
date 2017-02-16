@@ -1,0 +1,50 @@
+#! /bin/bash
+
+search_replace="wp search-replace '//example.com' '//example.dev'"
+
+# More complex search and replace command, ie multiple executions:
+# search_replace="\
+# 	wp search-replace '//example.com' '//example.dev' \
+# 	&& wp search-replace '/wp-content/uploads' '/app/uploads' \
+# 	"
+
+# The webroot inside vagrant.
+vagrant_site_path='/srv/www/example.com/current/web/app' 
+
+# The webroot on the host machine, ie your laptop.
+host_site_path='../site/web/app'
+
+# The place where we can issue vagrant commands on host machine.
+vagrant_path='../trellis' 
+
+# DB table prefix.
+# Remote is the sql dump from remote server. Local is the virtual
+# machine's table prefix, typically 'wp_'
+# 
+# Probably won't need to be done, but if you need it, uncomment the
+# `sed` command below.
+remote_db_prefix="wp_"
+local_db_prefix="wp_"
+
+# No need to change these unless something was changed in `get_db`
+local_download_path="."
+local_latest_link="latest.sql"
+
+
+
+# Get it done!!
+echo "Copying the most recent dump to site root..."
+cp ${local_download_path}/${local_latest_link} ${host_site_path}/
+
+# Update DB prefix of sql dump file.
+# echo "Updating the table prefix in ${local_latest_link}"
+# sed -i "s/${remote_db_prefix}/${local_db_prefix}/g" ${host_site_path}/${local_latest_link}
+
+echo "Importing dump into vagrant..."
+cd ${vagrant_path}
+vagrant ssh -- -t "cd ${vagrant_site_path} && wp db import ${local_latest_link} && ${search_replace}"
+cd -
+
+echo "Removing dump from local site root..."
+rm ${host_site_path}/${local_latest_link}
+
