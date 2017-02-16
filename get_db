@@ -1,0 +1,47 @@
+#! /bin/bash
+
+# SSH server alias. Set this in `~/.ssh/config`
+# This might look something like:
+#
+# Host client_code
+#   HostName xxx.xxx.xxx.xxx
+#   IdentityFile ~/.ssh/id_rsa
+#   user web
+#
+ssh_alias="example_alias"
+
+# Used for timestamp in filename.
+now=`date +%Y-%m-%d--%H-%M-%S`
+
+# The filename of the db dump to be saved.
+dump_name="example.com--${now}.sql"
+
+# Web root path on remote server.
+remote_path='/srv/www/example.com/current'
+
+# Where to download locally.
+local_download_path="."
+
+# Name of the symlink to point to the most recent dump. Probably doesn't need to change.
+local_latest_link="latest.sql"
+
+
+
+# Get it done!!
+echo "Creating remote DB dump..."
+ssh ${ssh_alias} "cd ${remote_path} && wp db export ${dump_name} && gzip ${dump_name}"
+
+echo "Copying remote dump to local machine..."
+scp ${ssh_alias}:${remote_path}/${dump_name}.gz ${local_download_path}/
+
+echo "Removing remote dump..."
+ssh ${ssh_alias} "rm ${remote_path}/${dump_name}.gz"
+
+echo "Removing old local dumps..."
+rm ${local_download_path}/*.sql
+
+gunzip --keep ${local_download_path}/${dump_name}.gz
+
+echo "Updating 'latest.sql' symlink..."
+ln -s ${local_download_path}/${dump_name} ${local_latest_link}
+
